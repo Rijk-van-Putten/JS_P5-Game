@@ -5,15 +5,23 @@ const DELTA_TIME = 1 / FRAME_RATE;
 const MOVE_SPEED = 4;
 const BULLET_SIZE = 12;
 const BULLET_SPEED = 6;
-const FIRE_DELAY = 0.04;
+const FIRE_DELAY = 0.06;
 const ENEMY_SIZE = 64;
 const ENEMY_SPEED = 2;
 const PLAYER_SIZE = 64;
+const MAX_HEALTH = 100;
+const BULLET_DAMGE = 5;
+
+const HEALTHBAR_EDGE = 5;
+const HEALTHBAR_WIDTH = 300;
+const HEALTHBAR_HEIGHT = 60;
+const HUD_PADDING = 10;
 
 var playerPos;
 var bullets = [];
 var enemies = [];
 var fireCountdown = 0;
+var currentHealth = MAX_HEALTH;
 
 class Bullet {
     constructor(position, direction) {
@@ -24,11 +32,18 @@ class Bullet {
     update() {
         var movement = this.direction.copy().mult(BULLET_SPEED);
         this.position.add(movement);
-        var enemy = checkPhysics(this.position, BULLET_SIZE);
-        if (enemy != null) {
-            var index1 = enemies.indexOf(enemy);
-            if (index1 >= 0)
-                enemies.splice(index1, 1); 
+        var enemy = checkPhysicsSimple(this.position, BULLET_SIZE);
+        if (enemy != null) { // Hit!!
+            if (enemy.dealDamage(BULLET_DAMGE)) // Deal the damage
+            {
+                // Remove from array if died
+                var index1 = enemies.indexOf(enemy);
+                if (index1 >= 0)
+                {
+                    enemies.splice(index1, 1); 
+                }
+            }
+            // Remove bullet from array
             var index2 = bullets.indexOf(this);
             if (index2 >= 0)
                 bullets.splice(index2, 1);
@@ -44,6 +59,7 @@ class Bullet {
 class Enemy {
     constructor(position) {
         this.position = position;
+        this.health = MAX_HEALTH;
     }
 
     update(playerPosition) {
@@ -51,12 +67,19 @@ class Enemy {
         movement.normalize();
         movement.mult(ENEMY_SPEED);
         if (checkPhysics(this, this.position.copy().add(createVector(movement.x, 0)), ENEMY_SIZE, true)) {
+            currentHealth -= 2;
             movement.x = 0;
         }
         if (checkPhysics(this, this.position.copy().add(createVector(0, movement.y)), ENEMY_SIZE, true)) {
+            currentHealth -= 2;
             movement.y = 0;
         }
         this.position.add(movement);
+    }
+
+    dealDamage(damage) {
+        this.health -= damage;
+        return this.health <= 0;
     }
 
     draw() {
@@ -130,7 +153,18 @@ function draw() {
     rect(playerPos.x, playerPos.y, PLAYER_SIZE, PLAYER_SIZE);
 
     drawBullets();
+    drawHealthbar();
 
+    if (currentHealth <= 0) {
+        gameOver();
+    }
+}
+
+
+function gameOver()
+{
+    console.log("GAME OVER!");
+    noLoop();
 }
 
 function updateEnemies() {
@@ -157,12 +191,30 @@ function drawBullets() {
     }
 }
 
+function drawHealthbar() {
+    noStroke();
+    rectMode(CORNER);
+    // Healthbar background
+    fill(50, 50, 50);
+    rect(HUD_PADDING, CANVAS_HEIGHT - HEALTHBAR_HEIGHT - HUD_PADDING, HEALTHBAR_WIDTH, HEALTHBAR_HEIGHT);
+    // Healthbar fill
+    fill('green');
+    rect(HUD_PADDING + HEALTHBAR_EDGE, CANVAS_HEIGHT - HEALTHBAR_HEIGHT - HUD_PADDING + HEALTHBAR_EDGE, 
+        HEALTHBAR_WIDTH / MAX_HEALTH * currentHealth - 2*HEALTHBAR_EDGE, // wi
+        HEALTHBAR_HEIGHT - 2*HEALTHBAR_EDGE);
+    // Text
+    textSize(32);
+    fill(255, 255, 255);
+    text(currentHealth, HUD_PADDING + HEALTHBAR_EDGE, CANVAS_HEIGHT - HEALTHBAR_HEIGHT/2 - HUD_PADDING);
+}
+
 function fire() {
     fireCountdown = FIRE_DELAY;
 
     let direction = createVector(mouseX, mouseY).sub(playerPos);
     direction.normalize();
-    bullets.push(new Bullet(createVector(playerPos.x, playerPos.y), direction));
+    bullets.push(new Bullet(createVector(playerPos.x, playerPos.y).add(direction.copy().mult(PLAYER_SIZE / 2 + BULLET_SIZE / 2)), 
+                direction));
 }
 
 class AABB {
@@ -208,31 +260,31 @@ function checkPhysics(self, position, size, collideWithPlayer) {
     return false;
 }
 
-// function checkPhysics(position, size) {
-//     var colliders = [];
-//     for (var i = 0; i < enemies.length; i++) {
-//         colliders.push(new AABB(enemies[i], enemies[i].getPos().x - ENEMY_SIZE / 2, enemies[i].getPos().x + ENEMY_SIZE / 2,
-//             enemies[i].getPos().y - ENEMY_SIZE / 2, enemies[i].getPos().y + ENEMY_SIZE / 2));
-//     }
+function checkPhysicsSimple(position, size) {
+    var colliders = [];
+    for (var i = 0; i < enemies.length; i++) {
+        colliders.push(new AABB(enemies[i], enemies[i].getPos().x - ENEMY_SIZE / 2, enemies[i].getPos().x + ENEMY_SIZE / 2,
+            enemies[i].getPos().y - ENEMY_SIZE / 2, enemies[i].getPos().y + ENEMY_SIZE / 2));
+    }
 
-//     var points = [];
-//     points.push(createVector(position.x + size / 2, position.y + size / 2));
-//     points.push(createVector(position.x + size / 2, position.y - size / 2));
-//     points.push(createVector(position.x - size / 2, position.y + size / 2));
-//     points.push(createVector(position.x - size / 2, position.y - size / 2));
+    var points = [];
+    points.push(createVector(position.x + size / 2, position.y + size / 2));
+    points.push(createVector(position.x + size / 2, position.y - size / 2));
+    points.push(createVector(position.x - size / 2, position.y + size / 2));
+    points.push(createVector(position.x - size / 2, position.y - size / 2));
 
-//     for (var j = 0; j < colliders.length; j++) {
-//         for (var k = 0; k < points.length; k++) {
-//             if (points[k].x >= colliders[j].x1 && points[k].x <= colliders[j].x2) {
-//                 if (points[k].y >= colliders[j].y1 && points[k].y <= colliders[j].y2) {
-//                     return colliders[j].object;
-//                 }
-//             }
-//         }
-//     }
+    for (var j = 0; j < colliders.length; j++) {
+        for (var k = 0; k < points.length; k++) {
+            if (points[k].x >= colliders[j].x1 && points[k].x <= colliders[j].x2) {
+                if (points[k].y >= colliders[j].y1 && points[k].y <= colliders[j].y2) {
+                    return colliders[j].object;
+                }
+            }
+        }
+    }
 
-//     return null;
-// }
+    return null;
+}
 
 function drawColliders(colliders) {
     for (var i = 0; i < colliders.length; i++) {
