@@ -7,7 +7,7 @@ class Bullet {
     update() {
         var movement = this.direction.copy().mult(BULLET_SPEED);
         this.position.add(movement);
-        var enemy = checkPhysicsSimple(this.position, BULLET_SIZE);
+        let enemy = checkPhysicsSimple(this.position, BULLET_SIZE);
         if (enemy != null) { // Hit!!
             if (enemy.dealDamage(BULLET_DAMGE)) // Deal the damage
             {

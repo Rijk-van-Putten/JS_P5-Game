@@ -9,11 +9,9 @@ class Enemy {
         movement.normalize();
         movement.mult(ENEMY_SPEED);
         if (checkPhysics(this, this.position.copy().add(createVector(movement.x, 0)), ENEMY_SIZE, true)) {
-            currentHealth -= 2;
             movement.x = 0;
         }
         if (checkPhysics(this, this.position.copy().add(createVector(0, movement.y)), ENEMY_SIZE, true)) {
-            currentHealth -= 2;
             movement.y = 0;
         }
         this.position.add(movement);

@@ -21,9 +21,11 @@ const HEALTHBAR_WIDTH = 300;
 const HEALTHBAR_HEIGHT = 60;
 const HUD_PADDING = 10;
 
+var canvas;
 var player;
 var bullets = [];
 var enemies = [];
+var obstacles = [];
 var fireCountdown = 0;
 var currentHealth = MAX_HEALTH;
 
@@ -34,7 +36,8 @@ function preload() {
 }
 
 function setup() {
-    createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT, WEBGL);
+    canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    canvas.position(50, 50);
     frameRate(60);
     cursor('assets/cursor.png', 16, 16);
     
@@ -46,35 +49,37 @@ function setup() {
     enemies.push(new Enemy(createVector(700, 500)));
     enemies.push(new Enemy(createVector(500, 300)));
     enemies.push(new Enemy(createVector(600, 900)));
+
+    obstacles.push(new Obstacle(createVector(300, 400), createVector(100, 200)));
+    obstacles.push(new Obstacle(createVector(500, 400), createVector(100, 200)));
+    obstacles.push(new Obstacle(createVector(700, 400), createVector(100, 200)));
+
 }
 
 
 function draw() {
-    camera(1, 1, 1);
-
+    // UPDATE
     player.handleMovement();
-
     if (fireCountdown > 0) {
         fireCountdown -= DELTA_TIME;
     }
     else if (mouseIsPressed && mouseButton == LEFT) {
         fire();
     }
-
     background(240, 240, 240);
     updateBullets();
     updateEnemies();
 
-    drawEnemies();
-
-    player.draw();
-
-    drawBullets();
-    drawHealthbar();
-
     if (currentHealth <= 0) {
         gameOver();
     }
+
+    // DRAW
+    drawEnemies();
+    player.draw();
+    drawObstacles();
+    drawBullets();
+    drawHealthbar();
 }
 
 
@@ -105,6 +110,13 @@ function updateBullets() {
 function drawBullets() {
     for (var i = 0; i < bullets.length; i++) {
         bullets[i].draw();
+    }
+}
+
+function drawObstacles()
+{
+    for (var i = 0; i < obstacles.length; i++) {
+        obstacles[i].draw();
     }
 }
 
@@ -151,14 +163,26 @@ function checkPhysics(self, position, size, collideWithPlayer) {
         if (self == enemies[i])
             continue;
 
-        colliders.push(new AABB(enemies[i], enemies[i].getPos().x - ENEMY_SIZE / 2, enemies[i].getPos().x + ENEMY_SIZE / 2,
-            enemies[i].getPos().y - ENEMY_SIZE / 2, enemies[i].getPos().y + ENEMY_SIZE / 2));
+        colliders.push(new AABB(enemies[i], 
+            enemies[i].getPos().x - ENEMY_SIZE / 2, 
+            enemies[i].getPos().x + ENEMY_SIZE / 2,
+            enemies[i].getPos().y - ENEMY_SIZE / 2, 
+            enemies[i].getPos().y + ENEMY_SIZE / 2));
+    }
+    for (var k = 0; k < obstacles.length; k++) {
+        colliders.push(new AABB(null, 
+            obstacles[k].position.x - obstacles[k].size.x / 2,  // X1 
+            obstacles[k].position.x + obstacles[k].size.x / 2,  // X2
+            obstacles[k].position.y - obstacles[k].size.y / 2,  // Y1
+            obstacles[k].position.y + obstacles[k].size.y / 2));// Y2
     }
     if (collideWithPlayer) {
-        colliders.push(new AABB(null, player.position.x - PLAYER_SIZE / 2, player.position.x + PLAYER_SIZE / 2,
-            player.position.y - PLAYER_SIZE / 2, player.position.y + PLAYER_SIZE / 2));
+        colliders.push(new AABB(null, 
+            player.position.x - PLAYER_SIZE / 2, 
+            player.position.x + PLAYER_SIZE / 2,
+            player.position.y - PLAYER_SIZE / 2, 
+            player.position.y + PLAYER_SIZE / 2));
     }
-
     var points = [];
     points.push(createVector(position.x + size / 2, position.y + size / 2));
     points.push(createVector(position.x + size / 2, position.y - size / 2));
@@ -181,8 +205,18 @@ function checkPhysics(self, position, size, collideWithPlayer) {
 function checkPhysicsSimple(position, size) {
     var colliders = [];
     for (var i = 0; i < enemies.length; i++) {
-        colliders.push(new AABB(enemies[i], enemies[i].getPos().x - ENEMY_SIZE / 2, enemies[i].getPos().x + ENEMY_SIZE / 2,
-            enemies[i].getPos().y - ENEMY_SIZE / 2, enemies[i].getPos().y + ENEMY_SIZE / 2));
+        colliders.push(new AABB(enemies[i], 
+            enemies[i].getPos().x - ENEMY_SIZE / 2, 
+            enemies[i].getPos().x + ENEMY_SIZE / 2,
+            enemies[i].getPos().y - ENEMY_SIZE / 2, 
+            enemies[i].getPos().y + ENEMY_SIZE / 2));
+    }
+    for (var k = 0; k < obstacles.length; k++) {
+        colliders.push(new AABB(null, 
+            obstacles[k].position.x - obstacles[k].size.x / 2,  // X1 
+            obstacles[k].position.x + obstacles[k].size.x / 2,  // X2
+            obstacles[k].position.y - obstacles[k].size.y / 2,  // Y1
+            obstacles[k].position.y + obstacles[k].size.y / 2));// Y2
     }
 
     var points = [];
