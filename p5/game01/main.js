@@ -2,12 +2,16 @@ const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = 800;
 const FRAME_RATE = 60;
 const DELTA_TIME = 1 / FRAME_RATE;
+
 const MOVE_SPEED = 4;
+
 const BULLET_SIZE = 12;
 const BULLET_SPEED = 6;
 const FIRE_DELAY = 0.06;
+
 const ENEMY_SIZE = 64;
 const ENEMY_SPEED = 2;
+
 const PLAYER_SIZE = 64;
 const MAX_HEALTH = 100;
 const BULLET_DAMGE = 5;
@@ -17,122 +21,38 @@ const HEALTHBAR_WIDTH = 300;
 const HEALTHBAR_HEIGHT = 60;
 const HUD_PADDING = 10;
 
-var playerPos;
+var player;
 var bullets = [];
 var enemies = [];
 var fireCountdown = 0;
 var currentHealth = MAX_HEALTH;
 
-class Bullet {
-    constructor(position, direction) {
-        this.position = position;
-        this.direction = direction;
-    }
+let squareFont;
 
-    update() {
-        var movement = this.direction.copy().mult(BULLET_SPEED);
-        this.position.add(movement);
-        var enemy = checkPhysicsSimple(this.position, BULLET_SIZE);
-        if (enemy != null) { // Hit!!
-            if (enemy.dealDamage(BULLET_DAMGE)) // Deal the damage
-            {
-                // Remove from array if died
-                var index1 = enemies.indexOf(enemy);
-                if (index1 >= 0)
-                {
-                    enemies.splice(index1, 1); 
-                }
-            }
-            // Remove bullet from array
-            var index2 = bullets.indexOf(this);
-            if (index2 >= 0)
-                bullets.splice(index2, 1);
-        }
-    }
-
-    draw() {
-        fill('orange');
-        rect(this.position.x, this.position.y, BULLET_SIZE, BULLET_SIZE);
-    }
-}
-
-class Enemy {
-    constructor(position) {
-        this.position = position;
-        this.health = MAX_HEALTH;
-    }
-
-    update(playerPosition) {
-        var movement = playerPos.copy().sub(this.position);
-        movement.normalize();
-        movement.mult(ENEMY_SPEED);
-        if (checkPhysics(this, this.position.copy().add(createVector(movement.x, 0)), ENEMY_SIZE, true)) {
-            currentHealth -= 2;
-            movement.x = 0;
-        }
-        if (checkPhysics(this, this.position.copy().add(createVector(0, movement.y)), ENEMY_SIZE, true)) {
-            currentHealth -= 2;
-            movement.y = 0;
-        }
-        this.position.add(movement);
-    }
-
-    dealDamage(damage) {
-        this.health -= damage;
-        return this.health <= 0;
-    }
-
-    draw() {
-        rectMode(CENTER);
-        fill('brown');
-        rect(this.position.x, this.position.y, ENEMY_SIZE, ENEMY_SIZE);
-    }
-
-    getPos() {
-        return this.position;
-    }
+function preload() {
+  squareFont = loadFont('assets/Square.ttf');
 }
 
 function setup() {
-    createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT, WEBGL);
     frameRate(60);
-    playerPos = createVector(100, 100);
+    cursor('assets/cursor.png', 16, 16);
+    
+    textFont(squareFont);
+
+    player = new Player(createVector(100, 100));
 
     enemies.push(new Enemy(createVector(200, 300)));
     enemies.push(new Enemy(createVector(700, 500)));
     enemies.push(new Enemy(createVector(500, 300)));
     enemies.push(new Enemy(createVector(600, 900)));
-
 }
 
 
 function draw() {
-    var horizontalInput = 0;
-    if (keyIsDown(LEFT_ARROW) || keyIsDown(65))
-        horizontalInput = -1;
-    else if (keyIsDown(RIGHT_ARROW) || keyIsDown(68))
-        horizontalInput = 1;
-    else
-        horizontalInput = 0;
-    var verticalInput = 0;
-    if (keyIsDown(DOWN_ARROW) || keyIsDown(83))
-        verticalInput = -1;
-    else if (keyIsDown(UP_ARROW) || keyIsDown(87))
-        verticalInput = 1;
-    else
-        verticalInput = 0;
+    camera(1, 1, 1);
 
-    // PLAYER MOVEMENT
-    var movement = createVector(horizontalInput, -verticalInput);
-    movement.normalize();
-    movement.mult(MOVE_SPEED);
-    if (checkPhysics(this, playerPos.copy().add(createVector(movement.x, 0)), PLAYER_SIZE, false)) {
-        movement.x = 0;
-    }
-    if (checkPhysics(this, playerPos.copy().add(createVector(0, movement.y)), PLAYER_SIZE, false)) {
-        movement.y = 0;
-    }
-    playerPos.add(movement);
+    player.handleMovement();
 
     if (fireCountdown > 0) {
         fireCountdown -= DELTA_TIME;
@@ -147,10 +67,7 @@ function draw() {
 
     drawEnemies();
 
-    noStroke();
-    rectMode(CENTER);
-    fill(255, 50, 50);
-    rect(playerPos.x, playerPos.y, PLAYER_SIZE, PLAYER_SIZE);
+    player.draw();
 
     drawBullets();
     drawHealthbar();
@@ -169,7 +86,7 @@ function gameOver()
 
 function updateEnemies() {
     for (var i = 0; i < enemies.length; i++) {
-        enemies[i].update(playerPos);
+        enemies[i].update(player.position);
     }
 }
 
@@ -200,20 +117,21 @@ function drawHealthbar() {
     // Healthbar fill
     fill('green');
     rect(HUD_PADDING + HEALTHBAR_EDGE, CANVAS_HEIGHT - HEALTHBAR_HEIGHT - HUD_PADDING + HEALTHBAR_EDGE, 
-        HEALTHBAR_WIDTH / MAX_HEALTH * currentHealth - 2*HEALTHBAR_EDGE, // wi
-        HEALTHBAR_HEIGHT - 2*HEALTHBAR_EDGE);
+        HEALTHBAR_WIDTH / MAX_HEALTH * currentHealth - 2*HEALTHBAR_EDGE, // width
+        HEALTHBAR_HEIGHT - 2*HEALTHBAR_EDGE); // height
     // Text
     textSize(32);
     fill(255, 255, 255);
-    text(currentHealth, HUD_PADDING + HEALTHBAR_EDGE, CANVAS_HEIGHT - HEALTHBAR_HEIGHT/2 - HUD_PADDING);
+    rectMode(CORNER);
+    text(currentHealth, HUD_PADDING + HEALTHBAR_EDGE, CANVAS_HEIGHT - HUD_PADDING/2 - HEALTHBAR_EDGE/2 - 16);
 }
 
 function fire() {
     fireCountdown = FIRE_DELAY;
 
-    let direction = createVector(mouseX, mouseY).sub(playerPos);
+    let direction = createVector(mouseX, mouseY).sub(player.position);
     direction.normalize();
-    bullets.push(new Bullet(createVector(playerPos.x, playerPos.y).add(direction.copy().mult(PLAYER_SIZE / 2 + BULLET_SIZE / 2)), 
+    bullets.push(new Bullet(createVector(player.position.x, player.position.y).add(direction.copy().mult(PLAYER_SIZE / 2 + BULLET_SIZE / 2)), 
                 direction));
 }
 
@@ -237,8 +155,8 @@ function checkPhysics(self, position, size, collideWithPlayer) {
             enemies[i].getPos().y - ENEMY_SIZE / 2, enemies[i].getPos().y + ENEMY_SIZE / 2));
     }
     if (collideWithPlayer) {
-        colliders.push(new AABB(null, playerPos.x - PLAYER_SIZE / 2, playerPos.x + PLAYER_SIZE / 2,
-            playerPos.y - PLAYER_SIZE / 2, playerPos.y + PLAYER_SIZE / 2));
+        colliders.push(new AABB(null, player.position.x - PLAYER_SIZE / 2, player.position.x + PLAYER_SIZE / 2,
+            player.position.y - PLAYER_SIZE / 2, player.position.y + PLAYER_SIZE / 2));
     }
 
     var points = [];
