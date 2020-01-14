@@ -1,0 +1,98 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="main.css">
+    <script src="../p5.js"></script>
+    
+<script>
+  var hoogte = 250;
+  var xBom = 850;
+  var yBom = 250;
+  var score = 0;
+  var snelheidBom = 2;
+  var bgColor = '#ab3030';
+  var speed = 5;
+  var img;
+    var soldier;
+var bgImg;
+
+function preload() {
+  img = loadImage('plane.png');
+  soldier = loadImage('soldier2.png');
+  bgImg = loadImage('background.jpg');
+}
+
+function setup() {
+  var myCanvas = createCanvas(850, 500);
+  myCanvas.parent('mijnDiv');
+  noStroke();
+  textSize(24);
+  yBom=random(10,470);
+}
+
+function draw() {
+  bgColor = color(random(255), random(255), random(255));
+  background(bgImg);
+  fill(bgColor)
+  rect(850, 500);
+  fill('white');
+  text("SCORE: "+score, 720, 490);  
+  if (keyIsDown(UP_ARROW)) {
+    hoogte = hoogte-speed;
+  }
+  if (keyIsDown(DOWN_ARROW)) {
+    hoogte = hoogte+speed;
+  }  
+  tekenVliegtuig(hoogte);
+  tekenBom(xBom,yBom);  
+  if (xBom==130 && yBom>hoogte-5 && yBom<hoogte+15) {
+    score++;    
+    if (score==5) {
+      noLoop();
+      background('green');
+      textSize(60);
+      text("GEWONNEN", 250, 250);      
+    }    
+    snelheidBom++;
+    xBom=850;
+    yBom=random(10,470);
+  }  
+  else {
+   xBom = xBom-snelheidBom;     
+   if (xBom<-20) {
+      noLoop();
+      background('red');
+      textSize(60);
+      text("VERLOREN", 250, 250);       
+   }    
+  }
+}
+  
+function tekenBom(xPositie,yPositie) {
+  fill('white');
+  rect(xPositie,yPositie,20,20);
+  image(soldier, xPositie,yPositie, 100, 100);
+}
+  
+function tekenVliegtuig(y) {
+  fill('black');
+  rect(50,y,50,30);
+  triangle(60,y,90,y,50,y-75);
+  triangle(60,y+30,90,y+30,50,y+105);
+  fill('blue');
+  triangle(100,y,100,y+30,130,y+15);
+  fill('yellow');
+  triangle(50,y,50,y+10,40,y+5);
+  triangle(50,y+10,50,y+20,40,y+15);
+  triangle(50,y+20,50,y+30,40,y+25);
+  
+  image(img, -50, y-100, 200, 200);
+}
+ 
+</script>
+  </head>
+  <body>
+    <!-- Javascript plaatst alles in onderstaande div -->
+    <div id='mijnDiv'></div>
+  </body>
+</html>
